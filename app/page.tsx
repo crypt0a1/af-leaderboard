@@ -46,6 +46,7 @@ interface ModelRow {
   firstBlock: number;
   weight: number;
   avgEnvScore: number | null;
+  totalSamples: number;
 }
 
 export default function AffineDashboard() {
@@ -90,13 +91,21 @@ export default function AffineDashboard() {
           environments[env] = row[headerMap[env]] || '';
         });
 
-        // Calculate average environment score
+        // Calculate average environment score and total samples
         const parseEnvScore = (scoreStr: string) => {
           if (!scoreStr || scoreStr === '') return null;
           const parts = scoreStr.split('/');
           if (parts.length < 1) return null;
           const accuracy = parseFloat(parts[0].replace('*', ''));
           return isNaN(accuracy) ? null : accuracy;
+        };
+
+        const parseTotalSamples = (scoreStr: string) => {
+          if (!scoreStr || scoreStr === '') return 0;
+          const parts = scoreStr.split('/');
+          if (parts.length < 3) return 0;
+          const samples = parseInt(parts[2]);
+          return isNaN(samples) ? 0 : samples;
         };
 
         const scores = Object.values(environments)
@@ -106,6 +115,9 @@ export default function AffineDashboard() {
         const avgEnvScore = scores.length > 0 
           ? scores.reduce((sum, score) => sum + score, 0) / scores.length 
           : null;
+
+        const totalSamples = Object.values(environments)
+          .reduce((sum, env) => sum + parseTotalSamples(env), 0);
 
         return {
           uid: row[headerMap['UID']],
@@ -126,6 +138,7 @@ export default function AffineDashboard() {
           firstBlock: row[headerMap['FirstBlk']],
           weight: row[headerMap['Wgt']] || 0,
           avgEnvScore,
+          totalSamples,
         };
       });
 
@@ -142,8 +155,8 @@ export default function AffineDashboard() {
     fetchData();
     fetchTaoPrice();
     
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchData, 30000);
+    // Auto-refresh every 10 seconds for real-time updates
+    const interval = setInterval(fetchData, 10000);
     // Refresh TAO price every 5 minutes
     const priceInterval = setInterval(fetchTaoPrice, 300000);
     return () => {
@@ -447,6 +460,12 @@ export default function AffineDashboard() {
                     </button>
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <button onClick={() => handleSort('totalSamples')} className="flex items-center space-x-1 hover:text-gray-700 dark:hover:text-gray-300">
+                      <span>Total Samples</span>
+                      <ArrowUpDown size={14} />
+                    </button>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Layer Scores
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -522,6 +541,13 @@ export default function AffineDashboard() {
                             N/A
                           </span>
                         )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <span className="text-sm font-semibold text-orange-600 dark:text-orange-400">
+                          {model.totalSamples.toLocaleString()}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -610,7 +636,7 @@ export default function AffineDashboard() {
           <a href="https://dashboard.affine.io/api/weights" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
             dashboard.affine.io/api/weights
           </a>
-          {' '}· Auto-refreshes every 30 seconds
+          {' '}· Auto-refreshes every 10 seconds
         </p>
       </footer>
     </div>
